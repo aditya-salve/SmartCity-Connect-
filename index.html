@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartCity Connect</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--p:#0b5fa5;--pd:#084a82;--bg:#f4f7fb;--t:#16202c;--m:#4a5868;--b:#d5dde8;--ok:#0f5132}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--t);overflow-x:hidden}
+header{background:var(--pd);color:#fff;position:sticky;top:0;z-index:1000}
+.bar{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;padding:0 16px;min-height:56px}
+.logo{font-weight:700;font-size:1.15rem;color:#fff;text-decoration:none}
+#burger{display:none;background:none;border:0;color:#fff;font-size:1.8rem;min-width:48px;min-height:48px;cursor:pointer}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{color:#fff;text-decoration:none;padding:12px 12px;border-radius:8px;min-height:44px;display:flex;align-items:center}
+nav a:hover,nav a.on{background:rgba(255,255,255,.2)}
+main{max-width:1100px;margin:auto;padding:16px}
+h1{font-size:1.8rem;line-height:1.2;margin:.3em 0}h2{font-size:1.3rem;margin:1em 0 .5em}
+.hero{background:linear-gradient(135deg,var(--p),#0a8f7a);color:#fff;border-radius:16px;padding:28px 20px}
+.hero p{max-width:600px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 20px;border-radius:10px;border:0;background:var(--p);color:#fff;font-size:1rem;font-weight:600;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--pd)}.btn:disabled{opacity:.6}.btn.alt{background:#fff;color:var(--pd);border:2px solid var(--pd)}
+.hero .btn{background:#fff;color:var(--pd);margin:4px 8px 4px 0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:16px;margin:0 0 12px}
+.stat b{display:block;font-size:2rem;line-height:1.1}.stat span{color:var(--m)}
+label{display:block;font-weight:600;margin:14px 0 4px}
+input,select,textarea{width:100%;font:inherit;padding:12px;border:1px solid #8a97a8;border-radius:10px;background:#fff;min-height:48px}
+textarea{min-height:110px}
+.map{height:320px;border-radius:12px;border:1px solid var(--b);margin:8px 0}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.85rem;font-weight:700}
+.pending{background:#fff3cd;color:#664500}.inprogress{background:#dbeafe;color:#0b3f73}.resolved{background:#d1e7dd;color:var(--ok)}
+.err{color:#9b1c1c;font-weight:600}.good{color:var(--ok);font-weight:600}.load{color:var(--m)}
+.bar2{height:10px;background:#e3e9f1;border-radius:6px;overflow:hidden}.bar2 i{display:block;height:100%;background:var(--p)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1 1 140px}
+.thumb{max-width:100%;max-height:220px;border-radius:8px;margin-top:8px}
+.big{font-size:1.6rem;font-weight:800;letter-spacing:.05em;word-break:break-all}
+.hp{position:absolute;left:-9999px}
+footer{text-align:center;color:var(--m);padding:24px 16px}
+@media(max-width:760px){#burger{display:block}nav{display:none;position:absolute;top:56px;left:0;right:0;background:var(--pd);flex-direction:column;padding:8px 16px 16px}nav.open{display:flex}h1{font-size:1.5rem}.map{height:280px}}
+</style></head><body>
+<header><div class="bar"><a class="logo" href="#home">🏙️ SmartCity Connect</a>
+<button id="burger" aria-label="Menu" onclick="document.getElementById('menu').classList.toggle('open')">☰</button>
+<nav id="menu"><a href="#home">Home</a><a href="#report">Report</a><a href="#track">Track</a><a href="#dashboard">Dashboard</a><a href="#about">About</a><a href="#contact">Contact</a><a href="#admin">Admin</a></nav></div></header>
+<main>
+<section id="home"><div class="hero"><h1>Report it. Track it. Fix it.</h1><p>Help improve your city. Report potholes, garbage, broken streetlights, water leaks and drainage problems, then follow progress until they are resolved.</p><a class="btn" href="#report">Report an issue</a><a class="btn" href="#track">Track a report</a></div>
+<h2>City at a glance</h2><div id="homeStats" class="grid"><p class="load">Loading…</p></div></section>
+
+<section id="report" hidden><h1>Report an issue</h1>
+<form id="rform" class="card" novalidate>
+<label for="cat">Issue type *</label><select id="cat" name="category" required><option value="">Choose…</option><option>Pothole</option><option>Garbage</option><option>Broken streetlight</option><option>Water leakage</option><option>Drainage problem</option><option>Other</option></select>
+<label for="desc">Description * <small>(public – do not include personal details)</small></label><textarea id="desc" name="description" maxlength="1000" required></textarea>
+<label>Location *</label><button type="button" class="btn alt" id="gps">📍 Use my current location</button>
+<p id="locMsg" class="load">Or tap the map / drag the pin to choose the spot.</p>
+<div id="rmap" class="map"></div><p id="locTxt" class="load"></p>
+<input type="hidden" name="lat" id="lat"><input type="hidden" name="lng" id="lng">
+<label for="addr">Nearby landmark / address (optional)</label><input id="addr" name="address" maxlength="200">
+<label for="photo">Photo (optional)</label><input id="photo" type="file" accept="image/*">
+<label for="nm">Your name (optional, private)</label><input id="nm" name="name" maxlength="80" autocomplete="name">
+<label for="ct">Phone or email (optional, private)</label><input id="ct" name="contact" maxlength="120">
+<input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+<p><button class="btn" id="sub" type="submit">Submit report</button></p><p id="fmsg" role="status"></p></form>
+<div id="done" class="card" hidden><h2>✅ Report submitted</h2><p>Your report ID:</p><p class="big" id="newid"></p><p>Save this ID to check progress.</p><a class="btn" href="#track" id="goTrack">Track this report</a></div></section>
+
+<section id="track" hidden><h1>Track a report</h1><div class="card"><label for="tid">Report ID</label><div class="row"><input id="tid" placeholder="SC-ABC123" autocapitalize="characters"><button class="btn" id="tbtn">Check status</button></div></div><div id="tout"></div></section>
+
+<section id="dashboard" hidden><h1>Public dashboard</h1><div id="dStats" class="grid"></div><h2>Issue map</h2><div id="dmap" class="map"></div><h2>By category</h2><div id="dCats" class="card"></div><h2>Recent reports</h2><div id="dList"><p class="load">Loading…</p></div></section>
+
+<section id="admin" hidden><h1>Admin</h1>
+<form id="lform" class="card"><label for="apw">Administrator password</label><input id="apw" type="password" autocomplete="current-password"><p><button class="btn">Log in</button></p><p id="lmsg" class="err"></p></form>
+<div id="apanel" hidden><div class="row"><select id="afilter"><option value="">All statuses</option><option>Pending</option><option>In Progress</option><option>Resolved</option></select><button class="btn alt" id="logout">Log out</button></div><div id="aList"></div></div></section>
+
+<section id="about" hidden><h1>About</h1><div class="card"><p>SmartCity Connect helps residents report civic problems and helps city teams review, prioritise and resolve them. Every report gets a unique ID, a location on the map, an optional photo, and a visible status: Pending, In Progress or Resolved.</p><p>The public dashboard shows issue types, locations (approximate) and statuses. Names and contact details you provide are private and visible only to administrators.</p><p>Map data © OpenStreetMap contributors.</p></div></section>
+
+<section id="contact" hidden><h1>Contact</h1><div class="card"><p>Email: <a href="mailto:contact@example.com">contact@example.com</a></p><p>Phone: +00 000 000 0000</p><p>Edit these details in <code>static/index.html</code> (Contact section).</p></div></section>
+</main><footer>© SmartCity Connect</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(p,o={}){const r=await fetch('/api'+p,o);let d={};try{d=await r.json()}catch(e){}if(!r.ok){const x=new Error(d.error||'Something went wrong ('+r.status+')');x.status=r.status;throw x}return d}
+const badge=s=>`<span class="badge ${s.replace(' ','').toLowerCase()}">${esc(s)}</span>`;
+const fmt=d=>new Date(d).toLocaleString([],{dateStyle:'medium',timeStyle:'short'});
+const msg=(s,t,bad)=>{const e=$(s);e.textContent=t;e.className=bad?'err':'good'};
+const tile=m=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(m);
+const statBox=(n,l)=>`<div class="card stat"><b>${n}</b><span>${l}</span></div>`;
+function renderStats(el,s){el.innerHTML=statBox(s.total,'Total')+statBox(s.pending,'Pending')+statBox(s.in_progress,'In Progress')+statBox(s.resolved,'Resolved')}
+
+const views=['home','report','track','dashboard','admin','about','contact'];
+function route(){let v=(location.hash||'#home').slice(1);if(!views.includes(v))v='home';
+ $$('main section').forEach(s=>s.hidden=s.id!==v);
+ $$('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+v));
+ $('#menu').classList.remove('open');window.scrollTo(0,0);
+ ({home:loadHome,report:initReport,dashboard:loadDash,admin:loadAdmin}[v]||(()=>{}))();}
+addEventListener('hashchange',route);
+
+async function loadHome(){try{renderStats($('#homeStats'),await api('/stats'))}catch(e){$('#homeStats').innerHTML=`<p class="err">${esc(e.message)}</p>`}}
+
+let rmap,rmark;
+function setPos(lat,lng,z){$('#lat').value=lat.toFixed(6);$('#lng').value=lng.toFixed(6);
+ if(!rmark){rmark=L.marker([lat,lng],{draggable:true}).addTo(rmap);rmark.on('dragend',()=>{const p=rmark.getLatLng();setPos(p.lat,p.lng)})}else rmark.setLatLng([lat,lng]);
+ if(z)rmap.setView([lat,lng],z);$('#locTxt').textContent='Selected: '+lat.toFixed(5)+', '+lng.toFixed(5)}
+function initReport(){if(!rmap){rmap=L.map('rmap').setView([20.59,78.96],5);tile(rmap);rmap.on('click',e=>setPos(e.latlng.lat,e.latlng.lng))}
+ setTimeout(()=>rmap.invalidateSize(),60)}
+$('#gps').onclick=()=>{const m=(t,b)=>{$('#locMsg').textContent=t;$('#locMsg').className=b?'err':'good'};
+ if(!navigator.geolocation){m('Location is not available on this device. Tap the map to choose the spot.',1);return}
+ const b=$('#gps');b.disabled=true;m('Finding your location…');
+ navigator.geolocation.getCurrentPosition(p=>{b.disabled=false;setPos(p.coords.latitude,p.coords.longitude,17);m('Location found. Drag the pin to adjust.')},
+ e=>{b.disabled=false;m(e.code===1?'Location permission was denied. Tap the map or drag the pin to choose the spot.':'Could not get your location. Tap the map to choose the spot.',1)},
+ {enableHighAccuracy:true,timeout:15000,maximumAge:0})};
+function shrink(f){return new Promise(res=>{const i=new Image(),u=URL.createObjectURL(f);i.onload=()=>{const k=Math.min(1,1280/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(u);res(b||f)},'image/jpeg',.8)};i.onerror=()=>res(f);i.src=u})}
+$('#rform').onsubmit=async e=>{e.preventDefault();
+ if(!$('#cat').value)return msg('#fmsg','Please choose an issue type.',1);
+ if($('#desc').value.trim().length<10)return msg('#fmsg','Please describe the issue (at least 10 characters).',1);
+ if(!$('#lat').value)return msg('#fmsg','Please choose a location on the map.',1);
+ const b=$('#sub');b.disabled=true;b.textContent='Submitting…';msg('#fmsg','');
+ try{const fd=new FormData(e.target),f=$('#photo').files[0];if(f)fd.append('photo',await shrink(f),'photo.jpg');
+  const d=await api('/reports',{method:'POST',body:fd});
+  e.target.reset();if(rmark){rmap.removeLayer(rmark);rmark=null}$('#locTxt').textContent='';
+  $('#newid').textContent=d.id;$('#done').hidden=false;$('#goTrack').onclick=()=>{$('#tid').value=d.id;setTimeout(doTrack,50)};$('#done').scrollIntoView()}
+ catch(x){msg('#fmsg',x.message,1)}finally{b.disabled=false;b.textContent='Submit report'}};
+
+async function doTrack(){const id=$('#tid').value.trim().toUpperCase(),o=$('#tout');if(!id)return;o.innerHTML='<p class="load">Loading…</p>';
+ try{const r=await api('/reports/'+encodeURIComponent(id));
+  o.innerHTML=`<div class="card"><b>${esc(r.id)}</b> ${badge(r.status)}<p><b>${esc(r.category)}</b><br>${esc(r.description)}</p>${r.admin_note?`<p><b>Update:</b> ${esc(r.admin_note)}</p>`:''}<p class="load">Submitted ${fmt(r.created_at)} · Updated ${fmt(r.updated_at)}</p>${r.has_photo?`<img class="thumb" alt="Report photo" src="/api/photo/${esc(r.id)}">`:''}</div>`}
+ catch(e){o.innerHTML=`<p class="err">${esc(e.message)}</p>`}}
+$('#tbtn').onclick=doTrack;$('#tid').onkeydown=e=>{if(e.key==='Enter')doTrack()};
+
+let dmap,dlayer;
+async function loadDash(){
+ if(!dmap){dmap=L.map('dmap').setView([20.59,78.96],4);tile(dmap);dlayer=L.layerGroup().addTo(dmap)}setTimeout(()=>dmap.invalidateSize(),60);
+ try{const [s,list]=await Promise.all([api('/stats'),api('/reports')]);renderStats($('#dStats'),s);
+  const mx=Math.max(1,...Object.values(s.by_category));
+  $('#dCats').innerHTML=Object.entries(s.by_category).map(([k,v])=>`<p>${esc(k)}: <b>${v}</b></p><div class="bar2"><i style="width:${v/mx*100}%"></i></div>`).join('')||'<p class="load">No reports yet.</p>';
+  dlayer.clearLayers();const pts=[];
+  list.forEach(r=>{pts.push([r.lat,r.lng]);L.marker([r.lat,r.lng]).addTo(dlayer).bindPopup(`<b>${esc(r.category)}</b><br>${esc(r.status)}<br>${esc(r.id)}`)});
+  if(pts.length)dmap.fitBounds(pts,{maxZoom:15,padding:[30,30]});
+  $('#dList').innerHTML=list.slice(0,50).map(r=>`<div class="card"><b>${esc(r.category)}</b> ${badge(r.status)}<br>${esc(r.description)}<br><small class="load">${esc(r.id)} · ${fmt(r.created_at)}</small>${r.has_photo?`<br><img class="thumb" loading="lazy" alt="Report photo" src="/api/photo/${esc(r.id)}">`:''}</div>`).join('')||'<p class="load">No reports yet.</p>'}
+ catch(e){$('#dList').innerHTML=`<p class="err">${esc(e.message)}</p>`}}
+
+const tok=()=>sessionStorage.getItem('sc_admin'),ah=()=>({Authorization:'Bearer '+tok(),'Content-Type':'application/json'});
+function loadAdmin(){const on=!!tok();$('#lform').hidden=on;$('#apanel').hidden=!on;if(on)loadAdminList()}
+$('#lform').onsubmit=async e=>{e.preventDefault();$('#lmsg').textContent='';
+ try{const d=await api('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('#apw').value})});sessionStorage.setItem('sc_admin',d.token);$('#apw').value='';loadAdmin()}
+ catch(x){$('#lmsg').textContent=x.message}};
+$('#logout').onclick=()=>{sessionStorage.removeItem('sc_admin');loadAdmin()};
+$('#afilter').onchange=loadAdminList;
+async function loadAdminList(){const o=$('#aList');o.innerHTML='<p class="load">Loading…</p>';
+ try{const f=$('#afilter').value,list=(await api('/admin/reports',{headers:ah()})).filter(r=>!f||r.status===f);
+  o.innerHTML=list.map(r=>`<div class="card" data-id="${esc(r.id)}"><b>${esc(r.id)}</b> ${badge(r.status)}<br><b>${esc(r.category)}</b> · <small>${fmt(r.created_at)}</small><p>${esc(r.description)}</p>
+  <small>📍 <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=18/${r.lat}/${r.lng}">${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</a>${r.address?' · '+esc(r.address):''}<br>Reporter: ${esc(r.reporter_name||'-')} · ${esc(r.reporter_contact||'-')}</small>
+  ${r.has_photo?`<br><img class="thumb" loading="lazy" alt="Report photo" src="/api/photo/${esc(r.id)}">`:''}
+  <label>Status</label><select class="st">${['Pending','In Progress','Resolved'].map(s=>`<option${s===r.status?' selected':''}>${s}</option>`).join('')}</select>
+  <label>Public update note</label><input class="nt" maxlength="300" value="${esc(r.admin_note||'')}"><p><button class="btn sv">Save</button> <span class="ms"></span></p></div>`).join('')||'<p class="load">No reports.</p>'}
+ catch(e){if(e.status===401){sessionStorage.removeItem('sc_admin');loadAdmin();$('#lmsg').textContent=e.message}else o.innerHTML=`<p class="err">${esc(e.message)}</p>`}}
+$('#aList').onclick=async e=>{if(!e.target.classList.contains('sv'))return;const c=e.target.closest('.card'),ms=c.querySelector('.ms');e.target.disabled=true;ms.textContent='Saving…';
+ try{await api('/admin/reports/'+c.dataset.id,{method:'PATCH',headers:ah(),body:JSON.stringify({status:c.querySelector('.st').value,note:c.querySelector('.nt').value})});ms.textContent='Saved ✓';ms.className='ms good'}
+ catch(x){ms.textContent=x.message;ms.className='ms err'}finally{e.target.disabled=false}};
+route();
+</script></body></html>
